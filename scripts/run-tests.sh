@@ -1,6 +1,9 @@
+#!/usr/bin/env sh
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 Swiss Data Science Center
+# Copyright 2017 - Swiss Data Science Center (SDSC)
+# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +17,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM buildpack-deps:curl
+# quit on errors:
+set -o errexit
 
-RUN apt-get update && apt-get install -y \
-        jq \
-    && rm -rf /var/lib/apt/lists/*
+# quit on unbound symbols:
+set -o nounset
 
-ADD . /
-
-CMD ["bash", "/example.sh"]
+pytest -v
+sphinx-build -qnNW docs docs/_build/html

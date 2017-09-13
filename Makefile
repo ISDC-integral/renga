@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 Swiss Data Science Center
+# Copyright 2017 - Swiss Data Science Center (SDSC)
+# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +20,10 @@ SBT_IVY_DIR := $(PWD)/.ivy
 SBT = sbt -ivy $(SBT_IVY_DIR)
 SBT_PUBLISH_TARGET = publish-local
 PLATFORM_BASE_DIR = ..
-PLATFORM_VERSION = 0.1.0-SNAPSHOT
+PLATFORM_VERSION = latest
 PLATFORM_BASE_REPO_URL = git@github.com:SwissDataScienceCenter
 PLATFORM_REPO_TPL = $(PLATFORM_BASE_REPO_URL)/$*.git
-IMAGE_REPOSITORY=registry.gitlab.com/swissdatasciencecenter/images/
+IMAGE_REPOSITORY=rengahub/
 
 define DOCKER_BUILD
 set version in Docker := "$(PLATFORM_VERSION)"
@@ -38,6 +40,7 @@ repos = \
 	renga-deployer \
 	renga-explorer \
 	renga-graph \
+	renga-projects \
 	renga-storage \
 	renga-ui
 
@@ -48,6 +51,7 @@ scala-services = \
 	renga-graph-mutation-service \
 	renga-graph-navigation-service \
 	renga-graph-typesystem-service \
+	renga-projects \
 	renga-storage
 
 dockerfile-services = \
@@ -99,3 +103,19 @@ $(dockerfile-services): %: $(PLATFORM_BASE_DIR)/%
 
 .PHONY: docker-images
 docker-images: $(scala-services) $(dockerfile-services)
+
+# Platform actions
+.PHONY: start stop restart test
+start:
+	@docker-compose build
+	@docker-compose create
+	@docker-compose up -d
+	@./scripts/wait-for-services.sh
+
+stop:
+	@docker-compose stop
+
+restart: stop start
+
+test:
+	@scripts/run-tests.sh

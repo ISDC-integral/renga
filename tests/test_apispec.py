@@ -15,40 +15,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Test API speficification."""
 
-sudo: true
-dist: xenial
+import requests
 
-notifications:
-  email: false
 
-sudo: required
+def test_swagger_paths():
+    """Test obtaining paths for listed services."""
+    response = requests.get('http://localhost/api/swagger.json')
+    assert response.status_code == 200
 
-services:
-  - docker
+    spec = response.json()
+    assert 'paths' in spec
 
-branches:
-  only:
-    - master
+    services = ('deployer', 'projects', 'storage')
+    paths = list(spec['paths'].keys())
 
-language: python
-
-matrix:
-  fast_finish: true
-
-python:
-  - "3.6"
-
-before_install:
-  - pip install Sphinx>=1.6.3
-  - pip install -r docs/requirements.txt
-  - pip install -r tests/requirements.txt
-
-install:
-  - ./scripts/travis-install.sh
-
-before_script:
-  - make start
-
-script:
-  - make test
+    for service in services:
+        assert any(
+            path.startswith('/api/{0}'.format(service))
+            for path in paths), service
