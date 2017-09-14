@@ -142,7 +142,7 @@ services:
       DEPLOYER_TOKEN_SCOPE_KEY: https://rm.datascience.ch/scope
       DEPLOYER_AUTHORIZATION_URL: http://localhost/auth/realms/Renga/protocol/openid-connect/auth
       DEPLOYER_TOKEN_URL: http://reverse-proxy/auth/realms/Renga/protocol/openid-connect/token
-      DEPLOYER_URL: localhost
+      DEPLOYER_URL: http://localhost
       DEPLOYER_BASE_PATH: /api/deployer
       WSGI_NUM_PROXIES: 1
       RENGA_AUTHORIZATION_CLIENT_SECRET: $AUTHORIZATION_CLIENT_SECRET
