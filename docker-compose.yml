@@ -265,4 +265,4 @@ services:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - /dev/null:/traefik.toml
-- ./services/traefik/ssl/:/ssl/
+        - ./services/traefik/ssl/:/ssl/
