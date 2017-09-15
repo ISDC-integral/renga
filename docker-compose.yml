@@ -39,14 +39,14 @@ services:
     image: jboss/keycloak-postgres:3.2.0.Final
     entrypoint: /data/docker-entrypoint.sh
     environment:
-      RENGA_ENDPOINT: ${RENGA_ENDPOINT}
-      RENGA_KEYCLOAK: /data/renga-realm.json
+      KEYCLOAK_MIGRATION_FILE: /data/renga-realm.json
       KEYCLOAK_PASSWORD: admin
       KEYCLOAK_USER: admin
       POSTGRES_DATABASE: keycloak
       POSTGRES_PASSWORD: keycloak
-      POSTGRES_USER: keycloak
       POSTGRES_PORT_5432_TCP_ADDR: postgres
+      POSTGRES_USER: keycloak
+      RENGA_ENDPOINT: ${RENGA_ENDPOINT}
     ports:
       - 8080
     command:
@@ -55,7 +55,6 @@ services:
       - "-Dkeycloak.migration.provider=singleFile"
       - "-Dkeycloak.migration.file=/data/renga-realm.json"
       - "-Dkeycloak.migration.strategy=IGNORE_EXISTING"
-#      - "-Dkeycloak.migration.realmName=Renga -Dkeycloak.migration.action=export -Dkeycloak.migration.provider=singleFile -Dkeycloak.migration.file=jmt.json"
     volumes:
       - ./services/keycloak/docker-entrypoint.sh:/data/docker-entrypoint.sh:ro
       - ./services/keycloak/renga-realm.json.tpl:/data/renga-realm.json.tpl:ro
@@ -127,7 +126,6 @@ services:
       traefik.frontend.rule: PathPrefix:/api/resource-manager
   deployer:
     image: ${IMAGE_REPOSITORY}renga-deployer:$PLATFORM_VERSION
-    command: uwsgi /code/docker/uwsgi/uwsgi.ini
     links:
       - db
       - reverse-proxy
@@ -141,24 +139,22 @@ services:
       - 5000
     restart: on-failure
     environment:
-      SQLALCHEMY_DATABASE_URI: "postgres+psycopg2://postgres:postgres@db/deployer"
-      KNOWLEDGE_GRAPH_URL: http://reverse-proxy/api/
-      RESOURCE_MANAGER_URL: http://reverse-proxy/api/resource-manager/authorize
-      DEPLOYER_JWT_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
-      DEPLOYER_JWT_ISSUER: resource-manager
-      DEPLOYER_TOKEN_SCOPE_KEY: https://rm.datascience.ch/scope
       DEPLOYER_AUTHORIZATION_URL: ${RENGA_ENDPOINT}/auth/realms/Renga/protocol/openid-connect/auth
+      DEPLOYER_BASE_PATH: /api/deployer
+      DEPLOYER_JWT_ISSUER: resource-manager
+      DEPLOYER_JWT_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
+      DEPLOYER_TOKEN_SCOPE_KEY: https://rm.datascience.ch/scope
       DEPLOYER_TOKEN_URL: http://reverse-proxy/auth/realms/Renga/protocol/openid-connect/token
       DEPLOYER_URL: ${RENGA_ENDPOINT}
-      DEPLOYER_BASE_PATH: /api/deployer
-      WSGI_NUM_PROXIES: 1
-      RENGA_AUTHORIZATION_CLIENT_SECRET: $AUTHORIZATION_CLIENT_SECRET
+      KNOWLEDGE_GRAPH_URL: http://reverse-proxy/api/
       RENGA_AUTHORIZATION_CLIENT_ID: renga-services
-      RENGA_ENDPOINT: ${RENGA_ENDPOINT}
-      DEPLOYER_DOCKER_NETWORK: renga_default
+      RENGA_AUTHORIZATION_CLIENT_SECRET: $AUTHORIZATION_CLIENT_SECRET
+      RENGA_ENDPOINT: ${RENGA_CONTAINERS_ENDPOINT:-$RENGA_ENDPOINT}
+      RESOURCE_MANAGER_URL: http://reverse-proxy/api/resource-manager/authorize
+      SQLALCHEMY_DATABASE_URI: "postgres+psycopg2://postgres:postgres@db/deployer"
+      WSGI_NUM_PROXIES: 1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ../renga-deployer:/code
     labels:
       traefik.enable: "true"
       traefik.frontend.rule: PathPrefix:/api/deployer
@@ -166,6 +162,7 @@ services:
     image: ${IMAGE_REPOSITORY}renga-explorer:$PLATFORM_VERSION
     environment:
       PLAY_APPLICATION_SECRET: $PLAY_APPLICATION_SECRET
+      RENGA_SERVICES_AUTHORIZATION_URL: ${RENGA_ENDPOINT}/auth/realms/Renga/protocol/openid-connect/auth
       RESOURCE_MANAGER_PUBLIC_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
     links:
       - reverse-proxy
@@ -180,9 +177,10 @@ services:
   projects:
     image: ${IMAGE_REPOSITORY}renga-projects:$PLATFORM_VERSION
     environment:
-      PLAY_APPLICATION_SECRET: $PLAY_APPLICATION_SECRET
-      RESOURCE_MANAGER_PUBLIC_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
       AUTHORIZATION_CLIENT_SECRET: $AUTHORIZATION_CLIENT_SECRET
+      PLAY_APPLICATION_SECRET: $PLAY_APPLICATION_SECRET
+      RENGA_SERVICES_AUTHORIZATION_URL: ${RENGA_ENDPOINT}/auth/realms/Renga/protocol/openid-connect/auth
+      RESOURCE_MANAGER_PUBLIC_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
     links:
       - reverse-proxy
     depends_on:
@@ -196,11 +194,11 @@ services:
   storage:
     image: ${IMAGE_REPOSITORY}renga-storage:$PLATFORM_VERSION
     environment:
-      STORAGE_BACKEND_LOCAL_ENABLED: "true"
-      PLAY_APPLICATION_SECRET: $PLAY_APPLICATION_SECRET
-      RESOURCE_MANAGER_PUBLIC_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
       AUTHORIZATION_CLIENT_SECRET: $AUTHORIZATION_CLIENT_SECRET
-#      GRAPH_SCOPE_REMOTE_URL: http://graph-typesystem:9000/api/types
+      PLAY_APPLICATION_SECRET: $PLAY_APPLICATION_SECRET
+      RENGA_SERVICES_AUTHORIZATION_URL: ${RENGA_ENDPOINT}/auth/realms/Renga/protocol/openid-connect/auth
+      RESOURCE_MANAGER_PUBLIC_KEY: $RESOURCE_MANAGER_PUBLIC_KEY
+      STORAGE_BACKEND_LOCAL_ENABLED: "true"
     volumes:
     - ./services/storage/data:/data
     links:
@@ -220,9 +218,9 @@ services:
       traefik.enable: "true"
       traefik.frontend.rule: Path:/api/swagger.json
     environment:
-      WSGI_NUM_PROXIES: 1
       API_ROOT_URL: http://reverse-proxy/api/
       SERVICES: deployer,projects,storage,explorer
+      WSGI_NUM_PROXIES: 1
     links:
       - reverse-proxy
   swagger:
@@ -242,10 +240,10 @@ services:
     links:
       - reverse-proxy
     environment:
-      KEYCLOAK_URL: http://reverse-proxy/auth/realms/Renga/  # from inside
-      KEYCLOAK_REDIRECT_URL: ${RENGA_ENDPOINT}/auth/realms/Renga/  # from outside
       API_ROOT_URL: http://reverse-proxy/api/
       APPLICATION_ROOT: /ui
+      KEYCLOAK_REDIRECT_URL: ${RENGA_ENDPOINT}/auth/realms/Renga/  # from outside
+      KEYCLOAK_URL: http://reverse-proxy/auth/realms/Renga/  # from inside
     labels:
       traefik.enable: "true"
       traefik.frontend.rule: PathPrefix:/ui
@@ -267,4 +265,4 @@ services:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - /dev/null:/traefik.toml
-        - ./services/traefik/ssl/:/ssl/
+- ./services/traefik/ssl/:/ssl/

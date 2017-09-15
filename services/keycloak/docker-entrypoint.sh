@@ -17,13 +17,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echo "======================================="
+echo "==================================================="
 echo " Configuration:"
 echo " RENGA_ENDPOINT=$RENGA_ENDPOINT"
-echo " RENGA_KEYCLOAK=$RENGA_KEYCLOAK"
-echo "======================================="
+echo " KEYCLOAK_MIGRATION_FILE=$KEYCLOAK_MIGRATION_FILE"
+echo "==================================================="
 
-( echo "cat <<EOF" ; cat $RENGA_KEYCLOAK.tpl ; echo EOF ) | RENGA_ENDPOINT=$RENGA_ENDPOINT bash > $RENGA_KEYCLOAK
+( echo "cat <<EOF" ; cat $KEYCLOAK_MIGRATION_FILE.tpl ; echo EOF ) | RENGA_ENDPOINT=$RENGA_ENDPOINT bash > $KEYCLOAK_MIGRATION_FILE
 
 exec /opt/jboss/docker-entrypoint.sh $@
 exit $?
